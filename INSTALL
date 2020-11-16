@@ -1,0 +1,13 @@
+Before compiling FocuserOne driver install libindi-dev
+# sudo apt-get install libindi-dev
+
+Compile FocuserOne driver
+# git clone https://github.com/astrojolo/focuserone.git
+# cd focuserone
+# mkdir build
+# cd build
+# cmake ..
+# make
+# make install
+
+DONE
