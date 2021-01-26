@@ -124,12 +124,27 @@ bool FocuserOne::initProperties()
     addSimulationControl();
     addConfigurationControl();
 
+    serialConnection = new Connection::Serial(this);
+    serialConnection->registerHandshake([&]()
+    {
+        return Handshake();
+    });
+    registerConnection(serialConnection);
+
+    serialConnection->setDefaultPort("/dev/ttyUSB0");
+    serialConnection->setDefaultBaudRate(serialConnection->B_38400);
+
     // focuser settings
     IUFillNumber(&FocuserSettingsN[FS_SPEED], "FS_SPEED", "Speed [pps]", "%.0f", 0, 4000, 50, 250);
     IUFillNumber(&FocuserSettingsN[FS_STEP_SIZE], "FS_STEP_SIZE", "Step size [um]", "%.2f", 0, 100, 0.1, 5.0);
+    IUFillNumber(&FocuserSettingsN[FS_CURRENT], "FS_CURRENT", "Stepper current [mA]", "%.0f", 100, 1500, 100, 400);
     IUFillNumber(&FocuserSettingsN[FS_COMPENSATION], "FS_COMPENSATION", "Compensation [steps/C]", "%.2f", -1000, 1000, 1, 0);
     IUFillNumber(&FocuserSettingsN[FS_COMP_THRESHOLD], "FS_COMP_THRESHOLD", "Compensation threshold [steps]", "%.0f", 1, 1000, 10, 10);
-    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 4, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 5, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+
+    IUFillSwitch(&FocuserHoldS[FS_HOLD_OFF], "FS_HOLD_OFF", "OFF", ISS_OFF);
+    IUFillSwitch(&FocuserHoldS[FS_HOLD_ON], "FS_HOLD_ON", "ON", ISS_ON);
+    IUFillSwitchVector(&FocuserHoldSP, FocuserHoldS, 2, getDeviceName(), "MOTOR_HOLD", "Stepper holding torque", SETTINGS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
 
     IUFillSwitch(&FocuserModeS[FS_MODE_UNI], "FS_MODE_UNI", "Unipolar", ISS_ON);
     IUFillSwitch(&FocuserModeS[FS_MODE_BI], "FS_MODE_BI", "Bipolar", ISS_OFF);
@@ -164,16 +179,6 @@ bool FocuserOne::initProperties()
     addParameter("WEATHER_HUMIDITY", "Humidity %", 0, 100, 15);
     addParameter("WEATHER_DEWPOINT", "Dew Point (C)", 0, 100, 15);
 
-    serialConnection = new Connection::Serial(this);
-    serialConnection->registerHandshake([&]()
-    {
-        return Handshake();
-    });
-    registerConnection(serialConnection);
-
-    serialConnection->setDefaultPort("/dev/ttyUSB0");
-    serialConnection->setDefaultBaudRate(serialConnection->B_38400);
-
     return true;
 }
 
@@ -190,6 +195,7 @@ bool FocuserOne::updateProperties()
         defineNumber(&FocuserSettingsNP);
         defineSwitch(&FocuserModeSP);
         defineSwitch(&FocuserCompModeSP);
+        defineSwitch(&FocuserHoldSP);
         defineSwitch(&FocuserManualSP);
         defineNumber(&CompensationValueNP);
         defineSwitch(&CompensateNowSP);
@@ -203,6 +209,7 @@ bool FocuserOne::updateProperties()
         deleteProperty(CompensationValueNP.name);
         deleteProperty(BuzzerSP.name);
         deleteProperty(FocuserCompModeSP.name);
+        deleteProperty(FocuserHoldSP.name);
         deleteProperty(FocuserManualSP.name);
         deleteProperty(FocusPosMMNP.name);
         FI::updateProperties();
@@ -235,6 +242,9 @@ bool FocuserOne::ISNewNumber (const char *dev, const char *name, double values[]
             updates[E_COMP_SENSR] = "0";   // sensor
             updates[E_COMP_TRGR] = doubleToStr(values[FS_COMP_THRESHOLD]);
             allOk = allOk && updateSettings("e", "E", updates);
+            updates.clear();
+            updates[Z_CURRENT] = doubleToStr(values[FS_CURRENT]);
+            allOk = allOk && updateSettings("z", "Z", updates);
         	if(allOk)
         	{
                 FocuserSettingsNP.s = IPS_BUSY;
@@ -267,7 +277,7 @@ bool FocuserOne::ISNewSwitch (const char *dev, const char *name, ISState *states
         // compensate now
         if(!strcmp(name, CompensateNowSP.name))
         {
-            sprintf(cmd, "S:%d", static_cast<uint8_t>(CompensationValueN[0].value));
+            sprintf(cmd, "S:%d", static_cast<uint16_t>(FocuserSettingsN[FS_COMP_THRESHOLD].value));
             bool allOk = sendCommand(cmd, res);
             CompensateNowSP.s = allOk ? IPS_BUSY : IPS_ALERT;
             if(allOk)
@@ -340,6 +350,24 @@ bool FocuserOne::ISNewSwitch (const char *dev, const char *name, ISState *states
         	FocuserCompModeSP.s = IPS_ALERT;
             return true;
         }
+
+        // Focuser stepper holding torque mode
+        if(!strcmp(name, FocuserHoldSP.name))
+        {
+            std::string value = "3";
+            if(!strcmp(FocuserHoldS[FS_HOLD_ON].name, names[0])) value = "2";
+            if(updateSettings("z", "Z", Z_STOP_CURRENT, value.c_str()))
+            {
+                FocuserHoldSP.s = IPS_BUSY;
+                IUUpdateSwitch(&FocuserHoldSP, states, names, n);
+                IDSetSwitch(&FocuserHoldSP, nullptr);
+                return true;
+            }
+            FocuserHoldSP.s = IPS_ALERT;
+            return true;
+        }
+
+
 
         if (strstr(name, "FOCUS"))
             return FI::processSwitch(dev, name, states, names, n);
@@ -547,14 +575,14 @@ bool FocuserOne::sensorRead()
             
             CompensationValueN[0].value = std::stod(result[Q_COMP_DIFF]);
             CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
-            CompensateNowS[0].s = (CompensationValueN[0].value > 0) ? ISS_OFF : ISS_ON;
+            CompensateNowS[0].s = (CompensationValueN[0].value != 0) ? ISS_OFF : ISS_ON;
             IDSetNumber(&CompensationValueNP, nullptr);
             IDSetSwitch(&CompensateNowSP, nullptr);
         }
     }
 
     // update settings data if was changed
-    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || BuzzerSP.s != IPS_OK || FocuserCompModeSP.s != IPS_OK)
+    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || BuzzerSP.s != IPS_OK || FocuserCompModeSP.s != IPS_OK || FocuserHoldSP.s != IPS_OK)
     {
         if (sendCommand("u", res))
         {
@@ -596,6 +624,16 @@ bool FocuserOne::sensorRead()
             FocuserCompModeS[FS_COMP_AUTO].s = (std::stod(result[E_COMP_AUTO]) > 0) ? ISS_ON : ISS_OFF;
             FocuserCompModeSP.s = IPS_OK;
             IDSetSwitch(&FocuserCompModeSP, nullptr);
+        }
+
+        if (sendCommand("z", res))
+        {
+            std::vector<std::string> result = split(res, ":");
+            FocuserSettingsN[FS_CURRENT].value = std::stod(result[Z_CURRENT]);
+            FocuserHoldS[FS_HOLD_OFF].s = (std::stod(result[Z_STOP_CURRENT]) == 3) ? ISS_ON : ISS_OFF;
+            FocuserHoldS[FS_HOLD_ON].s = (std::stod(result[Z_STOP_CURRENT]) < 3) ? ISS_ON : ISS_OFF;
+            FocuserHoldSP.s = IPS_OK;
+            IDSetSwitch(&FocuserHoldSP, nullptr);
         }
     }
 
