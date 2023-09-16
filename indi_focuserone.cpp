@@ -19,8 +19,8 @@
 
 #include "indicom.h"
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 2
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
 
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
