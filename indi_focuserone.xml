@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <driversList>
-<devGroup group="Focuser">
+<devGroup group="Focusers">
         <device label="FocuserOne" manufacturer="Astrojolo">
                 <driver name="FocuserOne">indi_focuserone</driver>
                 <version>1.0</version>
