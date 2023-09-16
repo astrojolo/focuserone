@@ -565,7 +565,7 @@ bool FocuserOne::sensorRead()
 
         if(result.size() > 5)
         {
-		LOGF_DEBUG("RES %i", result.size);
+		LOGF_DEBUG("RES %s", "result size > 5");
             if(std::stod(result[Q_SENS1_TYPE]) > 0)
             {
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[Q_SENS1_TEMP]));
