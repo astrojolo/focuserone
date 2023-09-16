@@ -13,7 +13,7 @@ mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make
-make install
+sudo make install
 ```
 
 Then indiserver needs to be started with FocuserOne drivers:
