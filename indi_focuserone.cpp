@@ -535,17 +535,12 @@ bool FocuserOne::sensorRead()
     char res[ASTROLINK4_LEN] = {0};
     if (sendCommand("q", res))
     {
-	LOGF_DEBUG("RES %s", res);    
         std::vector<std::string> result = split(res, ":");
-
         float focuserPosition = std::stod(result[Q_STEPPER_POS]);
-
-	    LOGF_DEBUG("RES %f", focuserPosition);
         FocusAbsPosN[0].value = focuserPosition;
         FocusPosMMN[0].value = focuserPosition * FocuserSettingsN[FS_STEP_SIZE].value / 1000.0;
         float stepsToGo = std::stod(result[Q_STEPS_TO_GO]);
 
-	    LOGF_DEBUG("RES %f", stepsToGo);
         if(stepsToGo == 0)
         {
         	if(requireBacklashReturn)
@@ -565,7 +560,6 @@ bool FocuserOne::sensorRead()
 
         if(result.size() > 5)
         {
-		LOGF_DEBUG("RES %s", "result size > 5");
             if(std::stod(result[Q_SENS1_TYPE]) > 0)
             {
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[Q_SENS1_TEMP]));
