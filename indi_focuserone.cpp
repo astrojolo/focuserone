@@ -25,6 +25,8 @@
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
 
+#define POLLTIME 500
+
 //////////////////////////////////////////////////////////////////////
 /// Delegates
 //////////////////////////////////////////////////////////////////////
@@ -85,7 +87,7 @@ bool FocuserOne::Handshake()
         }
         else
         {
-            SetTimer(POLLMS);
+            SetTimer(POLLTIME);
             return true;
         }
     }
@@ -97,7 +99,7 @@ void FocuserOne::TimerHit()
     if(isConnected())
     {
         sensorRead();
-        SetTimer(POLLMS);
+        SetTimer(POLLTIME);
     }
 }
 
@@ -189,17 +191,17 @@ bool FocuserOne::updateProperties()
 
     if (isConnected())
     {
-    	defineNumber(&FocusPosMMNP);
+    	defineProperty(&FocusPosMMNP);
         FI::updateProperties();
         WI::updateProperties();
-        defineNumber(&FocuserSettingsNP);
-        defineSwitch(&FocuserModeSP);
-        defineSwitch(&FocuserCompModeSP);
-        defineSwitch(&FocuserHoldSP);
-        defineSwitch(&FocuserManualSP);
-        defineNumber(&CompensationValueNP);
-        defineSwitch(&CompensateNowSP);
-        defineSwitch(&BuzzerSP);
+        defineProperty(&FocuserSettingsNP);
+        defineProperty(&FocuserModeSP);
+        defineProperty(&FocuserCompModeSP);
+        defineProperty(&FocuserHoldSP);
+        defineProperty(&FocuserManualSP);
+        defineProperty(&CompensationValueNP);
+        defineProperty(&CompensateNowSP);
+        defineProperty(&BuzzerSP);
     }
     else
     {
