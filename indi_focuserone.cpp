@@ -565,12 +565,6 @@ bool FocuserOne::sensorRead()
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[Q_SENS1_TEMP]));
                 setParameterValue("WEATHER_HUMIDITY", std::stod(result[Q_SENS1_HUM]));
                 setParameterValue("WEATHER_DEWPOINT", std::stod(result[Q_SENS1_DEW]));
-                ParametersNP.s = IPS_OK;
-                IDSetNumber(&ParametersNP, nullptr);
-            }
-            else
-            {
-                ParametersNP.s = IPS_IDLE;
             }
             
             CompensationValueN[0].value = std::stod(result[Q_COMP_DIFF]);
