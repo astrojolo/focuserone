@@ -19,8 +19,8 @@
 
 #include "indicom.h"
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 2
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
 
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
@@ -233,18 +233,14 @@ bool FocuserOne::ISNewNumber (const char *dev, const char *name, double values[]
         	bool allOk = true;
         	std::map<int, std::string> updates;
             updates[U_SPEED] = doubleToStr(values[FS_SPEED]);
-            updates[U_ACC] = doubleToStr(values[FS_SPEED] * 2.0);
+            //updates[U_ACC] = doubleToStr(values[FS_SPEED] * 2.0);
             updates[U_STEPSIZE] = doubleToStr(values[FS_STEP_SIZE] * 100.0);
+            updates[U_COMP_CYCLE] = "30";  // cycle [s]
+            updates[U_COMP_STEPS] = doubleToStr(values[FS_COMPENSATION] * 100.0);
+            //updates[U_COMP_SENSR] = "0";   // sensor
+            updates[U_COMP_TRGR] = doubleToStr(values[FS_COMP_THRESHOLD]);
+            updates[U_CURRENT] = doubleToStr(values[FS_CURRENT]);
             allOk = allOk && updateSettings("u", "U", updates);
-        	updates.clear();
-            updates[E_COMP_CYCLE] = "30";  // cycle [s]
-            updates[E_COMP_STEPS] = doubleToStr(values[FS_COMPENSATION] * 100.0);
-            updates[E_COMP_SENSR] = "0";   // sensor
-            updates[E_COMP_TRGR] = doubleToStr(values[FS_COMP_THRESHOLD]);
-            allOk = allOk && updateSettings("e", "E", updates);
-            updates.clear();
-            updates[Z_CURRENT] = doubleToStr(values[FS_CURRENT]);
-            allOk = allOk && updateSettings("z", "Z", updates);
         	if(allOk)
         	{
                 FocuserSettingsNP.s = IPS_BUSY;
@@ -340,7 +336,7 @@ bool FocuserOne::ISNewSwitch (const char *dev, const char *name, ISState *states
         {
         	std::string value = "0";
         	if(!strcmp(FocuserCompModeS[FS_COMP_AUTO].name, names[0])) value = "1";
-        	if(updateSettings("e", "E", E_COMP_AUTO, value.c_str()))
+        	if(updateSettings("u", "U", U_COMP_AUTO, value.c_str()))
         	{
         		FocuserCompModeSP.s = IPS_BUSY;
                 IUUpdateSwitch(&FocuserCompModeSP, states, names, n);
@@ -356,7 +352,7 @@ bool FocuserOne::ISNewSwitch (const char *dev, const char *name, ISState *states
         {
             std::string value = "3";
             if(!strcmp(FocuserHoldS[FS_HOLD_ON].name, names[0])) value = "2";
-            if(updateSettings("z", "Z", Z_STOP_CURRENT, value.c_str()))
+            if(updateSettings("u", "U", U_STOP_CURRENT, value.c_str()))
             {
                 FocuserHoldSP.s = IPS_BUSY;
                 IUUpdateSwitch(&FocuserHoldSP, states, names, n);
@@ -437,7 +433,7 @@ bool FocuserOne::ReverseFocuser(bool enabled)
 bool FocuserOne::SyncFocuser(uint32_t ticks)
 {
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "P:0:%u", ticks);
+    snprintf(cmd, ASTROLINK4_LEN, "P:%u", ticks);
     return sendCommand(cmd, res);
 }
 
@@ -524,6 +520,7 @@ bool FocuserOne::sendCommand(const char * cmd, char * res)
             return false;
         }
     }
+    
     return (cmd[0] == res[0]);
 }
 
@@ -533,14 +530,18 @@ bool FocuserOne::sendCommand(const char * cmd, char * res)
 bool FocuserOne::sensorRead()
 {
     char res[ASTROLINK4_LEN] = {0};
+    LOGF_DEBUG("Answer length %i", ASTROLINK4_LEN);
     if (sendCommand("q", res))
     {
+        LOGF_DEBUG("Response %s", res);
         std::vector<std::string> result = split(res, ":");
-
         float focuserPosition = std::stod(result[Q_STEPPER_POS]);
         FocusAbsPosN[0].value = focuserPosition;
         FocusPosMMN[0].value = focuserPosition * FocuserSettingsN[FS_STEP_SIZE].value / 1000.0;
+        LOGF_DEBUG("Foc pos %f", focuserPosition);
         float stepsToGo = std::stod(result[Q_STEPS_TO_GO]);
+        LOGF_DEBUG("Foc to go %f", stepsToGo);
+
         if(stepsToGo == 0)
         {
         	if(requireBacklashReturn)
@@ -558,15 +559,17 @@ bool FocuserOne::sensorRead()
         IDSetNumber(&FocusPosMMNP, nullptr);
         IDSetNumber(&FocusAbsPosNP, nullptr);
 
+        LOGF_DEBUG("%s", "Before if");
         if(result.size() > 5)
         {
+            LOGF_DEBUG("%s", "After if");
             if(std::stod(result[Q_SENS1_TYPE]) > 0)
             {
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[Q_SENS1_TEMP]));
                 setParameterValue("WEATHER_HUMIDITY", std::stod(result[Q_SENS1_HUM]));
                 setParameterValue("WEATHER_DEWPOINT", std::stod(result[Q_SENS1_DEW]));
             }
-            
+            LOGF_DEBUG("%s", "After sens type");
             CompensationValueN[0].value = std::stod(result[Q_COMP_DIFF]);
             CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
             CompensateNowS[0].s = (CompensationValueN[0].value != 0) ? ISS_OFF : ISS_ON;
@@ -574,7 +577,7 @@ bool FocuserOne::sensorRead()
             IDSetSwitch(&CompensateNowSP, nullptr);
         }
     }
-
+    LOGF_DEBUG("%s", "End if");
     // update settings data if was changed
     if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || BuzzerSP.s != IPS_OK || FocuserCompModeSP.s != IPS_OK || FocuserHoldSP.s != IPS_OK)
     {
@@ -596,6 +599,22 @@ bool FocuserOne::sensorRead()
             FocuserSettingsNP.s = IPS_OK;
             IDSetNumber(&FocuserSettingsNP, nullptr);
             IDSetNumber(&FocusMaxPosNP, nullptr);
+
+            FocuserSettingsN[FS_CURRENT].value = std::stod(result[U_CURRENT]);
+            FocuserHoldS[FS_HOLD_OFF].s = (std::stod(result[U_STOP_CURRENT]) == 3) ? ISS_ON : ISS_OFF;
+            FocuserHoldS[FS_HOLD_ON].s = (std::stod(result[U_STOP_CURRENT]) < 3) ? ISS_ON : ISS_OFF;
+            FocuserHoldSP.s = IPS_OK;
+            IDSetSwitch(&FocuserHoldSP, nullptr);
+
+            FocuserSettingsN[FS_COMPENSATION].value = std::stod(result[U_COMP_STEPS]) / 100.0;
+            FocuserSettingsN[FS_COMP_THRESHOLD].value = std::stod(result[U_COMP_TRGR]);
+            FocuserSettingsNP.s = IPS_OK;
+            IDSetNumber(&FocuserSettingsNP, nullptr);
+
+            FocuserCompModeS[FS_COMP_MANUAL].s = (std::stod(result[U_COMP_AUTO]) == 0) ? ISS_ON : ISS_OFF;
+            FocuserCompModeS[FS_COMP_AUTO].s = (std::stod(result[U_COMP_AUTO]) > 0) ? ISS_ON : ISS_OFF;
+            FocuserCompModeSP.s = IPS_OK;
+            IDSetSwitch(&FocuserCompModeSP, nullptr);            
         }
 
         if(sendCommand("j", res))
@@ -605,7 +624,7 @@ bool FocuserOne::sensorRead()
             BuzzerSP.s = IPS_OK;
             IDSetSwitch(&BuzzerSP, nullptr);
         }
-
+/*
         if (sendCommand("e", res))
         {
             std::vector<std::string> result = split(res, ":");
@@ -629,8 +648,9 @@ bool FocuserOne::sensorRead()
             FocuserHoldSP.s = IPS_OK;
             IDSetSwitch(&FocuserHoldSP, nullptr);
         }
+        */
     }
-
+/*
     if(FocuserManualSP.s != IPS_OK)
     {
         if (sendCommand("f", res))
@@ -642,7 +662,7 @@ bool FocuserOne::sensorRead()
             IDSetSwitch(&FocuserManualSP, nullptr);
         }
     }
-
+*/
     return true;
 }
 

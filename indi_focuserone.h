@@ -38,58 +38,37 @@
 
 #define Q_STEPPER_POS		1
 #define Q_STEPS_TO_GO		2
-#define Q_CURRENT			3
-#define Q_SENS1_TYPE		4
-#define Q_SENS1_TEMP		5
-#define Q_SENS1_HUM			6
-#define Q_SENS1_DEW			7
-#define Q_SENS2_TYPE		8
-#define Q_SENS2_TEMP		9
-#define Q_PWM1				10
-#define Q_PWM2				11
-#define Q_OUT1				12
-#define Q_OUT2				13
-#define Q_OUT3				14
-#define Q_VIN				15
-#define Q_VREG				16
-#define Q_AH				17
-#define Q_WH				18
-#define Q_DC_MOVE			19
-#define Q_COMP_DIFF			20
-#define Q_OP_FLAG			21
-#define Q_OP_VALUE			22
+#define Q_SENS1_TYPE		3
+#define Q_SENS1_TEMP		4
+#define Q_SENS1_HUM			5
+#define Q_SENS1_DEW			6
+#define Q_SENS2_TYPE		7
+#define Q_SENS2_TEMP		8
+#define Q_COMP_DIFF			9
 
-#define U_MAX_POS			1
-#define U_SPEED				2
-#define U_PWMSTOP			3
-#define U_PWMRUN			4
-#define U_ACC				5
+#define U_CURRENT           1
+#define U_STOP_CURRENT      2
+#define U_SPEED				3
+#define U_STEPPER_MODE		4
+#define U_MAX_POS			5
 #define U_REVERSED			6
-#define U_STEPPER_MODE		7
+#define U_STEPSIZE			7
 #define U_COMPSENS			8
-#define U_STEPSIZE			9
-#define U_PWMPRESC			10
-#define U_STEPPRESC			11
-#define U_BUZ_ENABLED		12
-#define U_HUM_SENS			13
-#define U_DC_REVERSED		14
-#define U_OUT1_DEF			15
-#define U_OUT2_DEF			16
-#define U_OUT3_DEF			17
+#define U_COMP_STEPS		8
+#define U_COMP_CYCLE		9
+#define U_COMP_TRGR			10
+#define U_COMP_AUTO			11
+#define U_CONTRAST_H        12
+#define U_CONTRAST_L        13
+#define U_CONTRAST_DELAY    14
+#define U_SHOWSPLASH        15
+#define U_DISABLE_OLED      16
+#define U_STEPS_PER_DEG     17
+#define U_MODE              18
+#define U_ROTATOR_OFFSET    19
 
-#define E_COMP_CYCLE		1
-#define E_COMP_STEPS		2
-#define E_COMP_SENSR		3
-#define E_COMP_AUTO			4
-#define E_COMP_TRGR			5
 
-#define N_AREF_COEFF		1
-#define N_OVER_VOLT			2
-#define N_OVER_AMP			3
-#define N_OVER_TIME			4
 
-#define Z_CURRENT           1
-#define Z_STOP_CURRENT      2
 
 namespace Connection
 {

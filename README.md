@@ -11,9 +11,9 @@ git clone https://github.com/astrojolo/focuserone.git
 cd focuserone
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make
-make install
+sudo make install
 ```
 
 Then indiserver needs to be started with FocuserOne drivers:
