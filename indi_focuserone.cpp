@@ -365,11 +365,10 @@ bool FocuserOne::ISNewSwitch (const char *dev, const char *name, ISState *states
             return true;
         }
 
-
-
-        if (strstr(name, "FOCUS"))
+        if (strstr(name, "FOCUS_")) 
             return FI::processSwitch(dev, name, states, names, n);
-
+        if (strstr(name, "WEATHER_")) 
+            return WI::processSwitch(dev, name, states, names, n);
 	}
 
 	return INDI::DefaultDevice::ISNewSwitch (dev, name, states, names, n);
